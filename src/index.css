@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --bg-page: radial-gradient(1200px 900px at 15% 5%, rgba(236, 72, 153, 0.15), transparent 50%),
+    radial-gradient(900px 700px at 85% 10%, rgba(79, 70, 229, 0.12), transparent 55%),
+    #fdf2f8;
+  --color-text-primary: #0f172a;
+  --color-text-muted: #475569;
+  --color-border-subtle: rgba(15, 23, 42, 0.08);
+  --color-border-strong: rgba(15, 23, 42, 0.2);
+  --color-surface: rgba(255, 255, 255, 0.96);
+  --color-surface-soft: rgba(255, 255, 255, 0.88);
+  --shadow-strong: 0 30px 90px rgba(15, 23, 42, 0.18);
+  --color-accent: #7c3aed;
+  --color-accent-soft: rgba(124, 58, 237, 0.16);
+  --color-link: #4c1d95;
+  --color-success: #059669;
+  --color-danger: #e11d48;
+  --color-info: #0284c7;
+  --color-select-bg: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-page: radial-gradient(1200px 800px at 20% 10%, rgba(99, 102, 241, 0.25), transparent 55%),
+    radial-gradient(900px 700px at 85% 20%, rgba(168, 85, 247, 0.2), transparent 55%),
+    radial-gradient(900px 700px at 50% 90%, rgba(16, 185, 129, 0.12), transparent 55%),
+    #020617;
+  --color-text-primary: rgba(248, 250, 252, 0.96);
+  --color-text-muted: rgba(148, 163, 184, 0.9);
+  --color-border-subtle: rgba(148, 163, 184, 0.24);
+  --color-border-strong: rgba(148, 163, 184, 0.4);
+  --color-surface: rgba(15, 23, 42, 0.96);
+  --color-surface-soft: rgba(15, 23, 42, 0.86);
+  --shadow-strong: 0 30px 120px rgba(15, 23, 42, 0.85);
+  --color-accent: #818cf8;
+  --color-accent-soft: rgba(129, 140, 248, 0.2);
+  --color-link: #a5b4fc;
+  --color-success: #34d399;
+  --color-danger: #fb7185;
+  --color-info: #38bdf8;
+  --color-select-bg: #0f172a;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--color-text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  overflow-x: hidden;
+}
+
+html,
+#root {
+  overflow-x: hidden;
+}
+
+select option {
+  background-color: var(--color-select-bg);
+  color: var(--color-text-primary);
+}
+
+::selection {
+  background: rgba(129, 140, 248, 0.35);
+  color: #020617;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(129, 140, 248, 0.45);
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.surface {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-strong);
+}
+
+.surface-soft {
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-link {
+  color: var(--color-link);
+}
+
+.text-link:hover {
+  opacity: 0.88;
+}
+
+.card {
+  background-color: var(--color-surface-soft);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-strong);
+}
+
+/* Override common Tailwind utility colors to respect theme */
+
+.text-white {
+  color: var(--color-text-primary) !important;
+}
+
+/* Fix text-white on solid button backgrounds so it stays white in light mode */
+.bg-indigo-500,
+.bg-cyan-500\/70,
+.bg-cyan-500\/80,
+.bg-emerald-500\/70,
+.bg-emerald-500\/80,
+.bg-rose-500,
+.bg-red-500 {
+  color: #ffffff !important;
+}
+
+/* Adaptive colors for pills and statuses */
+.text-emerald-100,
+.text-emerald-300,
+.text-green-400 {
+  color: var(--color-success) !important;
+}
+
+.text-amber-100,
+.text-yellow-400 {
+  color: var(--color-warning) !important;
+}
+
+.text-rose-200,
+.text-rose-300,
+.text-rose-400,
+.text-red-400 {
+  color: var(--color-danger) !important;
+}
+
+.text-cyan-200,
+.text-blue-400 {
+  color: var(--color-info) !important;
+}
+
+.text-white\/80,
+.text-white\/70,
+.text-white\/60,
+.text-white\/50,
+.text-white\/40 {
+  color: var(--color-text-muted) !important;
+}
+
+.text-indigo-400,
+.text-indigo-300,
+.text-indigo-200 {
+  color: var(--color-accent) !important;
+}
+
+.bg-indigo-500\/20 {
+  background-color: var(--color-accent-soft) !important;
+}
+
+.bg-white\/5,
+.bg-white\/10 {
+  background-color: var(--color-surface-soft) !important;
+}
+
+.bg-black\/20,
+.bg-black\/40,
+.bg-black\/95 {
+  background-color: var(--color-surface) !important;
+}
+
+.border-white\/5,
+.border-white\/10,
+.border-white\/15,
+.border-white\/20,
+.border-white\/40 {
+  border-color: var(--color-border-subtle) !important;
+}
+
+select option {
+  color: #0f172a;
+  background: #ffffff;
+}
