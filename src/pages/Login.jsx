@@ -263,6 +263,36 @@ export default function Login() {
           {busy ? 'Verifying...' : `Sign in as ${role === 'admin' && useSecretKey ? 'Admin (Key)' : roleCfg.name}`}
         </button>
       </form>
+
+      {/* Create account — Student only */}
+      {role === 'student' && (
+        <div className="mt-6 text-center">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)' }} />
+            <span className="text-[13px] font-medium" style={{ color: isDark ? '#4B5563' : '#94A3B8' }}>
+              New to CareerCompass?
+            </span>
+            <div className="flex-1 h-px" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)' }} />
+          </div>
+          <Link
+            to="/register"
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-semibold text-[15px] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.08)',
+              border: `1.5px solid ${isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.25)'}`,
+              color: isDark ? '#a5b4fc' : '#4f46e5',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+            Create new account
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
