@@ -4,7 +4,6 @@ import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import OwnerLogin from "./pages/OwnerLogin";
 import AuthLayout from "./layouts/AuthLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -47,7 +46,6 @@ export default function App() {
         <Route path="/signin" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<Register />} />
       </Route>
-      <Route path="/owner/login" element={<OwnerLogin />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

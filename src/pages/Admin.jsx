@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, ServerCog, RefreshCw, LogOut, Users, BookMarked, Activity, ShieldCheck, Download, CheckCircle2, AlertCircle } from 'lucide-react';
-import {
-  getOwnerEmail,
-  getOwnerSecurityState,
-  loadOwnerSecretKey,
-  loadOwnerSession,
-  ownerLogout,
-  setOwnerSecretKey,
-} from '../auth/ownerAuth';
+import { useAuth, loadAdminSecretKey, setAdminSecretKey } from '../auth/AuthProvider';
 import { fetchAdminSnapshot, publishStagedQuestions, saveAdminLinks, stageQuestion } from '../services/adminService';
 
 const EMPTY_SNAPSHOT = {
@@ -27,6 +20,7 @@ const EMPTY_SNAPSHOT = {
 
 export default function Admin() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,7 +42,30 @@ export default function Admin() {
   const [secretDraft, setSecretDraft] = useState('');
   const [secretSaving, setSecretSaving] = useState(false);
   const [secretMessage, setSecretMessage] = useState('');
-  const [secretConfigured, setSecretConfigured] = useState(() => Boolean(loadOwnerSecretKey()));
+  const [secretConfigured, setSecretConfigured] = useState(() => Boolean(loadAdminSecretKey()));
+
+  const saveSecretKey = () => {
+    const nextKey = secretDraft.trim();
+    if (!nextKey) {
+      setSecretMessage('Secret key cannot be empty.');
+      return;
+    }
+    setSecretSaving(true);
+    try {
+      setAdminSecretKey(nextKey);
+      setSecretConfigured(true);
+      setSecretMessage('Secret key saved.');
+      setSecretDraft('');
+    } finally {
+      setSecretSaving(false);
+    }
+  };
+
+  const clearSecretKey = () => {
+    setAdminSecretKey('');
+    setSecretConfigured(false);
+    setSecretMessage('Secret key cleared.');
+  };
 
   const loadSnapshot = async () => {
     setLoading(true);
@@ -81,9 +98,6 @@ export default function Admin() {
     });
   }, [snapshot.users, search]);
 
-  const ownerSession = loadOwnerSession();
-  const ownerSecurity = getOwnerSecurityState();
-
   const addLink = () => {
     const label = linkDraft.label.trim();
     const url = linkDraft.url.trim();
@@ -107,29 +121,6 @@ export default function Admin() {
     } finally {
       setSavingLinks(false);
     }
-  };
-
-  const saveSecretKey = () => {
-    const nextKey = secretDraft.trim();
-    if (!nextKey) {
-      setSecretMessage('Secret key cannot be empty.');
-      return;
-    }
-    setSecretSaving(true);
-    try {
-      setOwnerSecretKey(nextKey);
-      setSecretConfigured(true);
-      setSecretMessage('Secret key saved.');
-      setSecretDraft('');
-    } finally {
-      setSecretSaving(false);
-    }
-  };
-
-  const clearSecretKey = () => {
-    setOwnerSecretKey('');
-    setSecretConfigured(false);
-    setSecretMessage('Secret key cleared.');
   };
 
   const submitQuestion = async () => {
@@ -186,9 +177,9 @@ export default function Admin() {
     }
   };
 
-  const doOwnerLogout = () => {
-    ownerLogout();
-    navigate('/owner/login', { replace: true });
+  const doOwnerLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true, state: { role: 'admin' } });
   };
 
   const downloadFile = (filename, content, mimeType) => {
@@ -262,7 +253,7 @@ export default function Admin() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <span className="px-3 py-1.5 text-xs rounded-full border border-white/10 bg-white/10 text-white/80">
+            <span className="inline-flex items-center px-3 py-1.5 text-xs rounded-full border border-white/10 bg-white/10 text-white/80">
               {apiStateLabel}
             </span>
             <button
@@ -279,7 +270,7 @@ export default function Admin() {
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 transition"
             >
               <LogOut size={16} />
-              Owner sign out
+              Admin sign out
             </button>
           </div>
         </div>
@@ -301,28 +292,16 @@ export default function Admin() {
 
       <section className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-8 items-start">
         <div className="space-y-8">
-          <Panel title="Security & Owner Session" subtitle="Owner-only gate and access telemetry">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <StatPill label="Owner email" value={getOwnerEmail()} />
-              <StatPill
-                label="Session status"
-                value={ownerSession ? 'Active' : 'Not active'}
-                tone={ownerSession ? 'ok' : 'warn'}
-              />
-              <StatPill
-                label="Failed attempts"
-                value={ownerSecurity.failedAttempts}
-                tone={ownerSecurity.failedAttempts > 0 ? 'warn' : 'ok'}
-              />
-            </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+
+          <Panel title="Admin Secret Key" subtitle="Unlock the admin panel without typing full email/password">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <StatPill
                 label="Secret key configured"
                 value={secretConfigured ? 'Yes' : 'No'}
                 tone={secretConfigured ? 'ok' : 'warn'}
               />
               <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="text-xs text-white/60">Secret key lets you unlock the admin panel without typing credentials.</p>
+                <p className="text-xs text-white/60">Secret key lets you unlock the admin panel quickly.</p>
                 <div className="flex gap-2">
                   <input
                     value={secretDraft}
@@ -336,7 +315,7 @@ export default function Admin() {
                     disabled={secretSaving}
                     className="px-3 py-2 rounded-xl bg-emerald-500/70 text-white text-sm font-semibold hover:bg-emerald-500 transition disabled:opacity-60"
                   >
-                    {secretSaving ? 'Saving…' : 'Save'}
+                    {secretSaving ? 'Saving...' : 'Save'}
                   </button>
                 </div>
                 <button
@@ -351,54 +330,8 @@ export default function Admin() {
                 ) : null}
               </div>
             </div>
-            <Panel title="System signals" subtitle="Track usage and question health">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <StatPill
-                  label="Unique logins"
-                  value={`${snapshot.metrics?.uniqueLogins ?? 0}`}
-                  tone="ok"
-                />
-                <StatPill
-                  label="Tested users"
-                  value={`${snapshot.metrics?.testedUsers ?? 0}`}
-                  tone="ok"
-                />
-                <StatPill
-                  label="Questions flagged"
-                  value={`${snapshot.questionProblems?.length ?? 0}`}
-                  tone={snapshot.questionProblems?.length ? 'warn' : 'ok'}
-                />
-              </div>
-              {snapshot.questionProblems?.length ? (
-                <div className="mt-4 space-y-2">
-                  {snapshot.questionProblems.map((item) => (
-                    <div
-                      key={item.domain}
-                      className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/70"
-                    >
-                      {item.domain} has only {item.questionCount} questions (needs more coverage).
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-white/50 mt-3">No question problems detected.</p>
-              )}
-            </Panel>
-            {snapshot.alerts?.length ? (
-              <div className="mt-4 space-y-2">
-                {snapshot.alerts.map((a, idx) => (
-                  <div
-                    key={`${a.type}_${idx}`}
-                    className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-amber-100 text-sm"
-                  >
-                    {a.message}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-white/60 text-sm mt-3">No active system alerts.</p>
-            )}
           </Panel>
+
 
           <Panel title="Registered Users" subtitle="Searchable list of users and progress">
             <div className="mb-3">
@@ -573,8 +506,8 @@ export default function Admin() {
                         }
                         placeholder={placeholders[idx]}
                         className={`w-full pl-11 pr-4 py-3 rounded-xl border text-sm transition outline-none ${questionDraft.answerIndex === idx
-                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 placeholder-emerald-200/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                            : 'bg-white/5 border-white/10 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-100 placeholder-emerald-200/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                          : 'bg-white/5 border-white/10 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
                           }`}
                       />
                       {questionDraft.answerIndex === idx && (
@@ -733,16 +666,6 @@ export default function Admin() {
         </div>
       </section>
 
-      <Panel title="Backend API Contract (Spring Boot)" subtitle="Endpoints to implement on the Java backend">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <ContractRow method="GET" path="/api/admin/dashboard" note="Load users, tests, scores, links, staged queue" />
-          <ContractRow method="PUT" path="/api/admin/links" note="Persist curated resource links" />
-          <ContractRow method="POST" path="/api/admin/questions/stage" note="Stage new questions for review" />
-          <ContractRow method="POST" path="/api/admin/questions/publish" note="Publish staged questions to live bank" />
-          <ContractRow method="GET" path="/api/admin/attempts?limit=50" note="Fetch latest score attempts" />
-          <ContractRow method="POST" path="/api/admin/questions/refresh" note="Rebuild test sets and clear stale cache" />
-        </div>
-      </Panel>
     </div>
   );
 }
@@ -806,19 +729,6 @@ function SelectInput({ label, value, onChange, options }) {
   );
 }
 
-function ContractRow({ method, path, note }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex items-center justify-center min-w-14 px-2 py-1 rounded-md bg-white/10 text-cyan-200 text-xs font-semibold">
-          {method}
-        </span>
-        <code className="text-white/90 text-xs">{path}</code>
-      </div>
-      <p className="text-white/60 text-xs mt-2">{note}</p>
-    </div>
-  );
-}
 
 function StatPill({ label, value, tone = 'default' }) {
   const toneClass =

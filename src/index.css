@@ -47,7 +47,7 @@ body {
   margin: 0;
   background: var(--bg-page);
   color: var(--color-text-primary);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+  font-family: 'Raleway', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
   overflow-x: hidden;
 }
@@ -176,6 +176,8 @@ select option {
   color: var(--color-info) !important;
 }
 
+.text-white\/95,
+.text-white\/90,
 .text-white\/80,
 .text-white\/70,
 .text-white\/60,

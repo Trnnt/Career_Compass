@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { Navigate } from 'react-router-dom';
-import { fetchAdminSnapshot } from '../services/adminService';
+import { fetchTeacherSnapshot } from '../services/adminService';
 import {
     BookOpen, Users, ClipboardList, CheckCircle2, TrendingUp, LogOut,
     Activity, AlertCircle, Sun, Moon, CalendarDays, Bell, BarChart3,
@@ -166,7 +166,7 @@ export default function TeacherDashboard() {
     useEffect(() => {
         const load = async () => {
             try {
-                const data = await fetchAdminSnapshot();
+                const data = await fetchTeacherSnapshot();
                 setSnapshot(data);
             } catch (err) {
                 console.error(err);

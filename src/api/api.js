@@ -5,6 +5,7 @@ const API_BASE = 'http://localhost:8080/api';
 
 const api = axios.create({
     baseURL: API_BASE,
+    timeout: 4000,
     headers: { 'Content-Type': 'application/json' },
 });
 
@@ -69,6 +70,20 @@ export const testAPI = {
      *  @param {{ correct, total, percent, type, weekKey, domainScoresJson }} payload
      */
     saveAttempt: (payload) => api.post('/tests/attempts', payload),
+};
+
+// ─────────────────────────────────────────────────────────────
+//  RAISEC API
+// ─────────────────────────────────────────────────────────────
+export const raisecAPI = {
+    /** GET /api/raisec/test — fetch dynamic personalized RAISEC questions */
+    getTest: ({ difficulty = 'PERSONALIZED', grade = '', stream = '', interest = '' } = {}) =>
+        api.get('/raisec/test', {
+            params: { difficulty, grade, stream, interest },
+        }),
+
+    /** POST /api/raisec/submit — score and persist a 40-question RIASEC attempt */
+    submitTest: (payload) => api.post('/raisec/submit', payload),
 };
 
 export default api;

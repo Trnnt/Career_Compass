@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../theme/ThemeProvider";
@@ -9,7 +9,7 @@ import { loadAppState, saveAppState } from "../utils/storage";
    Styles
    ───────────────────────────────────────────── */
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 
   .nb-root {
     --accent:       #4FC3F7;
@@ -25,7 +25,7 @@ const css = `
     --dim:          #3D4F6B;
     --pdrop-bg:     rgba(8,13,24,0.97);
     --mobile-bg:    rgba(10,16,28,0.96);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Raleway', sans-serif;
   }
   .nb-root.is-light {
     --accent:       #0288D1;
@@ -69,6 +69,7 @@ const css = `
     position: relative;
     /* overflow:hidden removed so dropdown can escape */
     overflow: visible;
+    flex-wrap: wrap; gap: 12px;
   }
   .nb-pill::before {
     content: '';
@@ -112,10 +113,10 @@ const css = `
     transform: rotate(-6deg) scale(1.08);
   }
   .nb-logo-text {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Raleway', sans-serif;
     display: inline-flex; align-items: baseline;
-    font-size: 1.9rem; font-weight: 800;
-    letter-spacing: -0.04em; line-height: 1;
+    font-size: 1.9rem; font-weight: 900;
+    letter-spacing: -0.02em; line-height: 1;
   }
   .nb-logo-text .brand-main   { color: var(--text); }
   .nb-logo-text .brand-accent {
@@ -181,7 +182,7 @@ const css = `
     padding: 8px 18px; border-radius: 9px;
     background: linear-gradient(135deg, var(--accent), #0288D1);
     color: #fff; font-size: 0.845rem; font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Raleway', sans-serif;
     text-decoration: none; border: none; cursor: pointer;
     box-shadow: 0 0 22px rgba(79,195,247,0.28);
     transition: all 0.22s; white-space: nowrap;
@@ -195,7 +196,7 @@ const css = `
     padding: 7px 14px; border-radius: 9px;
     background: transparent; border: 1px solid var(--border);
     color: var(--muted); font-size: 0.83rem; font-weight: 500;
-    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s;
+    font-family: 'Raleway', sans-serif; cursor: pointer; transition: all 0.2s;
   }
   .nb-logout:hover { border-color: rgba(252,129,129,0.35); color: #FC8181; background: rgba(252,129,129,0.07); }
 
@@ -208,7 +209,7 @@ const css = `
     background: var(--surface-hov); border: 1px solid var(--border);
     border-radius: 40px; cursor: pointer; position: relative;
     transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    user-select: none;
+    user-select: none; flex-shrink: 0;
   }
   .nb-user:hover {
     border-color: var(--border-hov);
@@ -327,7 +328,7 @@ const css = `
     flex: 1; padding: 9px 0; border-radius: 9px;
     background: linear-gradient(135deg, var(--accent), #0288D1);
     color: #fff; font-size: 0.84rem; font-weight: 600;
-    font-family: 'DM Sans', sans-serif; border: none; cursor: pointer;
+    font-family: 'Raleway', sans-serif; border: none; cursor: pointer;
     box-shadow: 0 0 16px rgba(79,195,247,0.22);
     transition: opacity 0.18s, transform 0.18s;
   }
@@ -392,7 +393,7 @@ const css = `
     padding: 13px 18px; text-decoration: none; border: none;
     background: transparent; width: 100%;
     font-size: 0.9rem; font-weight: 500; color: var(--muted);
-    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    font-family: 'Raleway', sans-serif; cursor: pointer;
     transition: all 0.15s; text-align: left;
     border-bottom: 1px solid var(--border);
   }

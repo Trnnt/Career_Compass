@@ -9,6 +9,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('STUDENT');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +18,7 @@ export default function Register() {
     setError('');
     setBusy(true);
     try {
-      await register({ name, email, password });
+      await register({ name, email, password, role });
       navigate('/', { replace: true });
     } catch (err) {
       setError(err?.message || 'Registration failed');
@@ -29,6 +30,7 @@ export default function Register() {
   return (
     <div className="space-y-5">
       <form onSubmit={onSubmit} className="space-y-4">
+
         <div>
           <label className="block text-sm font-medium text-white/80 mb-1">Full name</label>
           <input

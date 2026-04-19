@@ -1,14 +1,15 @@
-﻿import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Assessment from '../components/Assessment';
 import CareerCompare from '../components/CareerCompare';
 import Dashboard from '../components/Dashboard';
 import Scoreboard from '../components/Scoreboard';
 import TestRunner from '../components/TestRunner';
+import RaisecTestRunner from '../components/RaisecTestRunner';
 import { buildAptitudeScores, getRecommendations, getStreamsForGrade, INTERESTS } from '../data/careers';
 import { TEST_BANK, TEST_CATALOG } from '../data/tests';
 import { getWeekKey } from '../utils/date';
 import { seededShuffle } from '../utils/random';
-import { buildTraitSignalsFromAttempts, canTakeWeeklyTest } from '../utils/scoring';
+import { buildTraitSignalsFromAttempts, buildTraitSignalsFromRaisecScores, canTakeWeeklyTest } from '../utils/scoring';
 import { clearAppState, loadAppState, saveAppState } from '../utils/storage';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -16,7 +17,7 @@ import { useAuth } from '../auth/AuthProvider';
    CSS
    ───────────────────────────────────────────── */
 const BG_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 
   .hbg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
   .hbg-mesh {
@@ -98,12 +99,12 @@ const BG_CSS = `
   .ticker-sep { color:rgba(99,102,241,.4); font-size:0.6rem; }
 
   /* ── Quick Stats ── */
-  .qs-val { font-family:'Syne',sans-serif; font-size:1.85rem; font-weight:800; line-height:1; }
+  .qs-val { font-family:'Raleway',sans-serif; font-size:1.85rem; font-weight:800; line-height:1; }
   @keyframes countIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
   .count-in { animation:countIn .4s cubic-bezier(.16,1,.3,1) both; }
 
   /* ── Radar chart ── */
-  .radar-lbl { font-size:10px; fill:rgba(199,210,254,.6); font-weight:500; font-family:'DM Sans',sans-serif; }
+  .radar-lbl { font-size:10px; fill:rgba(199,210,254,.6); font-weight:500; font-family:'Raleway',sans-serif; }
 
   /* ── Profile Completeness ── */
   .pc-bg  { fill:none; stroke:rgba(255,255,255,.06); }
@@ -119,16 +120,16 @@ const BG_CSS = `
   .rm-body::-webkit-scrollbar-thumb { background:rgba(99,102,241,.3); border-radius:4px; }
   .rm-step { display:flex; gap:14px; position:relative; }
   .rm-step:not(:last-child)::after { content:''; position:absolute; left:14px; top:30px; bottom:-14px; width:1px; background:linear-gradient(to bottom,rgba(99,102,241,.35),rgba(99,102,241,.04)); }
-  .rm-num { width:30px; height:30px; border-radius:50%; flex-shrink:0; border:1.5px solid rgba(99,102,241,.4); background:rgba(99,102,241,.1); display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; color:#a78bfa; position:relative; z-index:1; }
+  .rm-num { width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-center:center; font-size:0.7rem; font-weight:700; position:relative; z-index:1; }
   .rm-content { padding-bottom:24px; flex:1; min-width:0; }
-  .rm-title { font-size:0.86rem; font-weight:600; color:rgba(255,255,255,.88); margin-bottom:4px; }
-  .rm-desc  { font-size:0.77rem; color:rgba(255,255,255,.42); line-height:1.58; }
-  .rm-btn   { display:inline-flex; align-items:center; gap:5px; margin-top:8px; margin-right:6px; padding:5px 10px; border-radius:7px; background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.2); color:#a78bfa; font-size:0.71rem; font-weight:500; text-decoration:none; transition:all .18s; }
+  .rm-title { font-size:0.86rem; font-weight:600; margin-bottom:4px; }
+  .rm-desc  { font-size:0.77rem; line-height:1.58; }
+  .rm-btn   { display:inline-flex; align-items:center; gap:5px; margin-top:8px; margin-right:6px; padding:5px 10px; border-radius:7px; font-size:0.71rem; font-weight:500; text-decoration:none; transition:all .18s; }
   .rm-btn:hover { background:rgba(99,102,241,.2); border-color:rgba(99,102,241,.38); color:#c4b5fd; }
 `;
 
 /* ── Modes ── */
-const MODES = { overview: 'overview', assessment: 'assessment', test: 'test', weekly: 'weekly', compare: 'compare' };
+const MODES = { overview: 'overview', assessment: 'assessment', test: 'test', weekly: 'weekly', compare: 'compare', raisec_test: 'raisec_test' };
 
 /* ── Tech headlines ── */
 const HEADLINES = [
@@ -224,7 +225,7 @@ function AnimatedBackground() {
 function TechTicker() {
   const doubled = [...HEADLINES, ...HEADLINES];
   return (
-    <div className="rounded-2xl border border-white/[.07] bg-white/[.025] backdrop-blur-xl overflow-hidden flex items-stretch h-10">
+    <div className="rounded-2xl border border-white/[.07] bg-white/[.025] backdrop-blur-xl overflow-hidden flex items-center h-10">
       {/* Label pill */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 border-r border-white/10 bg-indigo-500/10">
         <span className="pulse-dot" style={{ width: 5, height: 5 }} />
@@ -296,20 +297,24 @@ function QuickStats({ attempts }) {
 /* ─────────────────────────────────────────────
    ③ Skill Radar Chart (pure SVG)
    ───────────────────────────────────────────── */
-function RadarChart({ attempts }) {
+function RadarChart({ attempts, singleAttempt }) {
   const DOM = ['programming', 'tech', 'math', 'communication', 'business', 'helping'];
   const LBLS = ['Code', 'Tech', 'Math', 'Comms', 'Biz', 'Help'];
   const N = DOM.length;
   const CX = 105; const CY = 105; const R = 75;
 
   const scores = useMemo(() => {
-    if (!attempts.length) return DOM.map(() => 0);
-    const tot = {}, cnt = {};
-    attempts.forEach(a => Object.entries(a.domainScores || {}).forEach(([k, v]) => {
-      tot[k] = (tot[k] || 0) + v; cnt[k] = (cnt[k] || 0) + 1;
-    }));
-    return DOM.map(d => cnt[d] ? Math.round(tot[d] / cnt[d]) : 0);
-  }, [attempts]);
+    const target = singleAttempt || (attempts && attempts.length > 0 ? attempts[attempts.length - 1] : null);
+    if (!target) {
+      if (!attempts || !attempts.length) return DOM.map(() => 0);
+      const tot = {}, cnt = {};
+      attempts.forEach(a => Object.entries(a.domainScores || {}).forEach(([k, v]) => {
+        tot[k] = (tot[k] || 0) + v; cnt[k] = (cnt[k] || 0) + 1;
+      }));
+      return DOM.map(d => cnt[d] ? Math.round(tot[d] / cnt[d]) : 0);
+    }
+    return DOM.map(d => target.domainScores ? (target.domainScores[d] || 0) : 0);
+  }, [attempts, singleAttempt]);
 
   const angle = i => Math.PI * 2 * i / N - Math.PI / 2;
   const pt = (i, r) => [CX + r * Math.cos(angle(i)), CY + r * Math.sin(angle(i))];
@@ -321,11 +326,11 @@ function RadarChart({ attempts }) {
     <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <span style={{ width: 8, height: 8, borderRadius: 2, background: 'linear-gradient(135deg,#a78bfa,#6366f1)', display: 'inline-block' }} />
-            Skill Radar
+            Skill Distribution
           </h3>
-          <p className="text-xs text-white/40 mt-0.5">Average domain scores across all attempts</p>
+          <p className="text-[10px] text-white/40 mt-0.5">{singleAttempt ? 'Scores for this specific attempt' : 'Average domain scores across all attempts'}</p>
         </div>
         {has && <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 font-medium">Live</span>}
       </div>
@@ -384,25 +389,25 @@ function RoadmapDrawer({ career, onClose }) {
   return (
     <>
       <div className="rm-overlay" onClick={onClose} />
-      <div className="rm-panel">
+      <div className="rm-panel bg-[var(--color-surface)] border-l border-[var(--color-border-subtle)]">
         {/* Header */}
-        <div className="py-5 px-6 shrink-0 bg-indigo-500/10 border-b border-indigo-500/10">
+        <div className="py-5 px-6 shrink-0 bg-[var(--color-accent-soft)] border-b border-[var(--color-border-subtle)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[0.62rem] font-extrabold tracking-widest uppercase text-indigo-400 mb-1.5">
+              <p className="text-[0.62rem] font-extrabold tracking-widest uppercase text-[var(--color-accent)] mb-1.5">
                 Career roadmap
               </p>
-              <h2 className="font-['Syne'] text-xl font-extrabold text-white leading-tight m-0">
+              <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] leading-tight m-0">
                 {career?.name || career?.title || 'Your path'}
               </h2>
               {career?.matchPercentage != null && (
-                <p className="text-xs text-white/50 mt-1">
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
                   {career.matchPercentage}% match with your profile
                 </p>
               )}
             </div>
             <button type="button" onClick={onClose}
-              className="shrink-0 w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition">
+              className="shrink-0 w-8 h-8 rounded-lg bg-[var(--color-surface-soft)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-border-subtle)] flex items-center justify-center transition">
               ✕
             </button>
           </div>
@@ -413,18 +418,18 @@ function RoadmapDrawer({ career, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {steps.map((step, i) => (
               <div key={i} className="rm-step">
-                <div className="rm-num">{i + 1}</div>
+                <div className="rm-num border-[var(--color-border-strong)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">{i + 1}</div>
                 <div className="rm-content">
-                  <p className="rm-title">{step.title}</p>
-                  <p className="rm-desc">{step.desc}</p>
+                  <p className="rm-title text-[var(--color-text-primary)]">{step.title}</p>
+                  <p className="rm-desc text-[var(--color-text-muted)] line-clamp-3 hover:line-clamp-none transition-all">{step.desc}</p>
                   <div>
                     <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(step.yt)}`}
-                      target="_blank" rel="noopener noreferrer" className="rm-btn">
+                      target="_blank" rel="noopener noreferrer" className="rm-btn bg-[var(--color-accent-soft)] border-[var(--color-border-subtle)] text-[var(--color-accent)] hover:bg-[var(--color-border-subtle)]">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                       YouTube
                     </a>
                     <a href={`https://www.google.com/search?q=${encodeURIComponent(step.g)}`}
-                      target="_blank" rel="noopener noreferrer" className="rm-btn">
+                      target="_blank" rel="noopener noreferrer" className="rm-btn bg-[var(--color-accent-soft)] border-[var(--color-border-subtle)] text-[var(--color-accent)] hover:bg-[var(--color-border-subtle)]">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                       Resources
                     </a>
@@ -433,9 +438,9 @@ function RoadmapDrawer({ career, onClose }) {
               </div>
             ))}
           </div>
-          <div className="mt-6 p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-            <p className="text-[0.74rem] text-indigo-200 leading-relaxed m-0">
-              <strong className="text-indigo-400">Tip:</strong> Focus on one milestone at a time. 4–6 weeks per step. Consistency beats intensity every time.
+          <div className="mt-6 p-3.5 rounded-xl bg-[var(--color-accent-soft)] border border-[var(--color-border-subtle)]">
+            <p className="text-[0.74rem] text-[var(--color-text-muted)] leading-relaxed m-0">
+              <strong className="text-[var(--color-accent)]">Tip:</strong> Focus on one milestone at a time. 4–6 weeks per step. Consistency beats intensity every time.
             </p>
           </div>
         </div>
@@ -462,20 +467,78 @@ export default function Home() {
 
   const weekKey = useMemo(() => getWeekKey(new Date()), []);
   const weeklyAvailable = useMemo(() => canTakeWeeklyTest(attempts, weekKey), [attempts, weekKey]);
-  const traitSignals = useMemo(() => buildTraitSignalsFromAttempts(attempts), [attempts]);
+  const traitSignals = useMemo(() => {
+    const historicalSignals = buildTraitSignalsFromAttempts(attempts);
+    const latestRaisecAttempt = [...attempts].reverse().find((attempt) => attempt?.type === 'raisec');
+    if (!latestRaisecAttempt) return historicalSignals;
+
+    const raisecSignals = buildTraitSignalsFromRaisecScores(latestRaisecAttempt.domainScores);
+    const mergedSignals = { ...historicalSignals };
+    Object.entries(raisecSignals).forEach(([key, value]) => {
+      mergedSignals[key] = Math.max(Number(mergedSignals[key]) || 0, Number(value) || 0);
+    });
+    return mergedSignals;
+  }, [attempts]);
   const selectedCareer = useMemo(() => recommendations.find(r => r.id === selectedCareerId) || recommendations[0] || null, [recommendations, selectedCareerId]);
 
   useEffect(() => {
-    const saved = loadAppState(user?.id);
-    if (!saved) return;
-    if (saved.profile) setProfile(saved.profile);
-    if (saved.aptitudeAnswers) setAptitudeAnswers(saved.aptitudeAnswers);
-    if (saved.recommendations) { setRecommendations(saved.recommendations); setSelectedCareerId(saved.recommendations[0]?.id || null); }
-    if (Array.isArray(saved.attempts)) setAttempts(saved.attempts);
+    let isMounted = true;
+    async function loadData() {
+      const saved = loadAppState(user?.id) || {};
+
+      let latestProfile = saved.profile || null;
+      let latestAttempts = Array.isArray(saved.attempts) ? saved.attempts : [];
+      let latestRecs = saved.recommendations || [];
+      let latestAptitude = saved.aptitudeAnswers || null;
+
+      try {
+        const { userAPI, testAPI } = await import('../api/api');
+        const [meRes, attRes] = await Promise.all([
+          userAPI.getMe().catch(() => ({ data: null })),
+          testAPI.getAttempts().catch(() => ({ data: null }))
+        ]);
+
+        if (meRes?.data) {
+          latestProfile = { ...latestProfile, ...meRes.data };
+          saved.profile = latestProfile;
+        }
+        if (attRes?.data && Array.isArray(attRes.data)) {
+          latestAttempts = attRes.data.map(a => {
+            let scores = {};
+            try { scores = a.domainScoresJson ? JSON.parse(a.domainScoresJson) : {}; } catch (e) { }
+            return { ...a, domainScores: scores };
+          });
+          saved.attempts = latestAttempts;
+        }
+      } catch (e) {
+        console.log("Using local offline fallback for data");
+      }
+
+      if (isMounted) {
+        if (latestProfile) setProfile(latestProfile);
+        if (latestAptitude) setAptitudeAnswers(latestAptitude);
+        if (latestRecs.length > 0) {
+          setRecommendations(latestRecs);
+          setSelectedCareerId(latestRecs[0]?.id || null);
+        } else if (latestProfile && latestAptitude) {
+          recompute(latestProfile, latestAptitude);
+        } else if (latestProfile && latestAttempts.length > 0) {
+          // Fallback compute if we only have attempts and profile
+          recompute(latestProfile, []);
+        }
+        if (latestAttempts.length > 0) setAttempts(latestAttempts);
+      }
+    }
+
+    if (user?.id) loadData();
+    return () => { isMounted = false; };
   }, [user?.id]);
 
   useEffect(() => {
-    saveAppState(user?.id, { profile, aptitudeAnswers, recommendations, attempts });
+    // Only save if we actually have data, prevent overwriting with null on mount
+    if (profile || attempts.length > 0) {
+      saveAppState(user?.id, { profile, aptitudeAnswers, recommendations, attempts });
+    }
   }, [user?.id, profile, aptitudeAnswers, recommendations, attempts]);
 
   const recompute = (np, na) => {
@@ -483,14 +546,88 @@ export default function Home() {
     setRecommendations(recs); setSelectedCareerId(recs[0]?.id || null);
   };
 
-  const handleAssessmentSubmit = ({ profile: p, aptitudeAnswers: a }) => {
+  useEffect(() => {
+    if (profile && aptitudeAnswers && traitSignals) {
+      recompute(profile, aptitudeAnswers);
+    }
+  }, [traitSignals, profile, aptitudeAnswers]);
+
+  const hydrateAttempt = (attempt) => {
+    let scores = attempt?.domainScores || {};
+    if ((!scores || Object.keys(scores).length === 0) && attempt?.domainScoresJson) {
+      try {
+        scores = JSON.parse(attempt.domainScoresJson);
+      } catch {
+        scores = {};
+      }
+    }
+    return { ...attempt, domainScores: scores };
+  };
+
+  const finalizeAttempt = (attempt) => {
+    const storedAttempt = hydrateAttempt(attempt);
+    const next = [...attempts, storedAttempt];
+    setAttempts(next);
+
+    if (activeTest?.meta?.fromAssessment && pendingAssessment) {
+      const { profile: p, aptitudeAnswers: a } = pendingAssessment;
+      const historicalSignals = buildTraitSignalsFromAttempts(next);
+      const raisecSignals = storedAttempt.type === 'raisec'
+        ? buildTraitSignalsFromRaisecScores(storedAttempt.domainScores)
+        : {};
+      const mergedSignals = { ...historicalSignals };
+
+      Object.entries(raisecSignals).forEach(([key, value]) => {
+        mergedSignals[key] = Math.max(Number(mergedSignals[key]) || 0, Number(value) || 0);
+      });
+
+      const recs = getRecommendations(p, buildAptitudeScores(a), mergedSignals);
+      setProfile(p); setAptitudeAnswers(a); setRecommendations(recs); setSelectedCareerId(recs[0]?.id || null); setPendingAssessment(null);
+    }
+
+    setMode(MODES.overview); setActiveTest(null);
+  };
+
+  const handleAssessmentSubmit = async ({ profile: p, aptitudeAnswers: a }) => {
+    setPendingAssessment({ profile: p, aptitudeAnswers: a });
     setIsAnalyzing(true);
-    setTimeout(() => {
-      setPendingAssessment({ profile: p, aptitudeAnswers: a });
-      const questions = pickQuestions({ bank: TEST_BANK, domains: pickDomainsForInterest(p.interest), count: 10, seed: `assessment_${Date.now()}_${p.interest}` });
-      setActiveTest({ title: 'Career Fit Test', subtitle: 'Now take this test. After this exam, we will decide your course path.', questions, meta: { type: 'assessment_test', fromAssessment: true } });
-      setMode(MODES.test); setIsAnalyzing(false);
-    }, 450);
+    try {
+      const { raisecAPI, userAPI } = await import('../api/api');
+      const streamLabel = getStreamsForGrade(p.grade).find((stream) => stream.value === p.stream)?.label || p.stream;
+      const interestLabel = INTERESTS.find((item) => item.value === p.interest)?.label || p.interest;
+
+      if (localStorage.getItem('careercompass:jwt')) {
+        try {
+          await userAPI.updateMe({
+            name: p.name,
+            grade: p.grade,
+            stream: p.stream,
+            interest: p.interest,
+          });
+        } catch {
+          // Local auth or offline backend is allowed here.
+        }
+      }
+
+      const res = await raisecAPI.getTest({
+        grade: p.grade,
+        stream: p.stream,
+        interest: p.interest,
+      });
+
+      setActiveTest({
+        title: `${p.grade === 'grad' ? 'Graduation' : `Class ${p.grade}`} Personalized Test`,
+        subtitle: `30 questions from ${streamLabel} and 10 questions from ${interestLabel}.`,
+        questions: res.data,
+        meta: { type: 'assessment_test', fromAssessment: true }
+      });
+      setMode(MODES.raisec_test);
+    } catch (e) {
+      console.error("Failed to load personalized assessment.", e);
+      setMode(MODES.assessment);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const startCoreTest = () => {
@@ -504,15 +641,28 @@ export default function Home() {
     setActiveTest({ title: 'Weekly Test', subtitle: 'One attempt per week. Your score influences the career decision logic.', questions, meta: { type: 'weekly', weekKey } }); setMode(MODES.weekly);
   };
 
-  const onAttemptSaved = (attempt) => {
-    const next = [...attempts, attempt];
-    setAttempts(next);
-    if (activeTest?.meta?.fromAssessment && pendingAssessment) {
-      const { profile: p, aptitudeAnswers: a } = pendingAssessment;
-      const recs = getRecommendations(p, buildAptitudeScores(a), buildTraitSignalsFromAttempts(next));
-      setProfile(p); setAptitudeAnswers(a); setRecommendations(recs); setSelectedCareerId(recs[0]?.id || null); setPendingAssessment(null);
+  const onAttemptSaved = async (attempt) => {
+    let storedAttempt = attempt;
+
+    try {
+      const { testAPI } = await import('../api/api');
+      const payload = { ...attempt, domainScoresJson: JSON.stringify(attempt.domainScores || {}) };
+      const res = await testAPI.saveAttempt(payload);
+      if (res?.data) storedAttempt = hydrateAttempt(res.data);
+    } catch (e) {
+      console.log("Saved attempt offline");
     }
-    setMode(MODES.overview); setActiveTest(null);
+
+    finalizeAttempt(storedAttempt);
+  };
+
+  const handleRaisecAttemptComplete = async ({ questionIds, answers }) => {
+    const { raisecAPI } = await import('../api/api');
+    const res = await raisecAPI.submitTest({ questionIds, answers });
+    if (!res?.data) {
+      throw new Error('Backend did not return a scored RIASEC attempt.');
+    }
+    finalizeAttempt(res.data);
   };
 
   useEffect(() => {
@@ -526,7 +676,7 @@ export default function Home() {
     setRecommendations([]); setAttempts([]); setActiveTest(null); setMode(MODES.overview);
   };
 
-  const defaultProfile = { name: user?.name || 'Student', email: user?.email || '', grade: '12', stream: 'science', interest: 'tech', mobile: '', city: '', targetYear: '' };
+  const defaultProfile = { name: user?.name || 'Student', email: user?.email || '', grade: '12', stream: 'PCM', interest: 'tech', mobile: '', city: '', targetYear: '' };
 
   return (
     <>
@@ -537,7 +687,7 @@ export default function Home() {
       {isAnalyzing && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(5,8,15,.88)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <div className="hbg-spinner" />
-          <p style={{ color: 'rgba(255,255,255,.6)', fontSize: '0.9rem' }}>Analysing your profile…</p>
+          <p style={{ color: 'rgba(255,255,255,.6)', fontSize: '0.9rem' }}>Preparing your personalized 40-question test...</p>
         </div>
       )}
 
@@ -556,7 +706,23 @@ export default function Home() {
         {attempts.length > 0 && <QuickStats attempts={attempts} />}
 
         {/* Mode panels */}
-        {mode === MODES.assessment && <div className="animate-slideUp"><Assessment onSubmit={handleAssessmentSubmit} isLoading={isAnalyzing} /></div>}
+        {mode === MODES.assessment && (
+          <div className="animate-slideUp">
+            <Assessment
+              initialProfile={pendingAssessment?.profile || profile || defaultProfile}
+              onSubmit={handleAssessmentSubmit}
+              isLoading={isAnalyzing}
+            />
+          </div>
+        )}
+
+        {mode === MODES.raisec_test && (
+          <div className="animate-slideUp">
+            <RaisecTestRunner title={activeTest?.title} subtitle={activeTest?.subtitle} questions={activeTest?.questions || []}
+              onCancel={() => { setPendingAssessment(null); setActiveTest(null); setMode(MODES.overview); }}
+              onComplete={handleRaisecAttemptComplete} />
+          </div>
+        )}
         {(mode === MODES.test || mode === MODES.weekly) && (
           <div className="animate-slideUp">
             <TestRunner title={activeTest?.title} subtitle={activeTest?.subtitle} questions={activeTest?.questions || []} meta={activeTest?.meta}
@@ -572,13 +738,10 @@ export default function Home() {
 
             {/* LEFT */}
             <div className="space-y-6">
-              <TopMatchesCard recommendations={recommendations} selectedCareerId={selectedCareerId}
+              <TopMatchesCard recommendations={recommendations} selectedCareerId={selectedCareerId} attempts={attempts}
                 onSelectCareer={setSelectedCareerId} onCompare={() => setMode(MODES.compare)} onOpenRoadmap={setRoadmapCareer} />
 
               <TrendingCareersCard />
-
-              {/* ③ Skill radar */}
-              <RadarChart attempts={attempts} />
 
               <KnowledgeCheck onTakeTest={startCoreTest} onWeeklyTest={startWeeklyTest} weeklyAvailable={weeklyAvailable} />
               <AttemptsTable attempts={attempts} />
@@ -661,8 +824,7 @@ function Hero({ hasProfile, onStartAssessment, onTakeTest, onWeeklyTest, weeklyA
             <p className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)] text-[var(--color-text-primary)]">
               <span className="pulse-dot" />AI-powered career guidance
             </p>
-            <h1 className="mt-4 text-3xl sm:text-5xl font-extrabold tracking-tight text-[var(--color-text-primary)] leading-tight"
-              style={{ fontFamily: "'Syne',sans-serif" }}>
+            <h1 className="mt-4 text-3xl sm:text-5xl font-extrabold tracking-tight text-[var(--color-text-primary)] leading-tight">
               Find a career path that{' '}
               <span style={{ background: 'linear-gradient(135deg,#a78bfa 0%,#6366f1 50%,#818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                 fits your strengths.
@@ -673,7 +835,7 @@ function Hero({ hasProfile, onStartAssessment, onTakeTest, onWeeklyTest, weeklyA
               Based on your score, we surface the best career with roadmaps and video links.
             </p>
           </div>
-          <div className="flex flex-col gap-3 w-full sm:w-auto">
+          <div className="flex flex-col gap-3 w-full sm:w-auto items-stretch sm:items-start">
             <button type="button" onClick={onStartAssessment}
               className="px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white font-semibold transition shadow-lg hover:shadow-indigo-500/30">
               {hasProfile ? '↺ Re-take assessment' : '✦ Start assessment'}
@@ -711,7 +873,7 @@ function MiniCard({ icon, title, desc }) {
 /* ─────────────────────────────────────────────
    TopMatchesCard (with Roadmap button)
    ───────────────────────────────────────────── */
-function TopMatchesCard({ recommendations, selectedCareerId, onSelectCareer, onCompare, onOpenRoadmap }) {
+function TopMatchesCard({ recommendations, selectedCareerId, attempts, onSelectCareer, onCompare, onOpenRoadmap }) {
   const activeRec = recommendations.find(r => r.id === selectedCareerId) || recommendations[0];
   return (
     <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6">
@@ -733,7 +895,7 @@ function TopMatchesCard({ recommendations, selectedCareerId, onSelectCareer, onC
           })}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex gap-2 mb-6">
         <button type="button" onClick={onCompare}
           className="btn-secondary flex-1 px-3 py-2.5 rounded-xl bg-white/8 text-white/80 border border-white/10 text-xs font-medium transition">
           ⇄ Compare
@@ -745,6 +907,12 @@ function TopMatchesCard({ recommendations, selectedCareerId, onSelectCareer, onC
           </button>
         )}
       </div>
+
+      {recommendations.length > 0 && (
+        <div className="pt-6 border-t border-white/10">
+          <RadarChart attempts={attempts} singleAttempt={null} />
+        </div>
+      )}
     </div>
   );
 }

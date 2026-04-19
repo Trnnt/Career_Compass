@@ -6,10 +6,10 @@ import Roadmap from './Roadmap';
    theme; adds 3-D animated background + polish
    ───────────────────────────────────────────── */
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
 
   .ccp-root {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Raleway', sans-serif;
     position: relative;
     overflow: hidden;
     min-height: 400px;
@@ -161,7 +161,7 @@ const css = `
     border: 1px solid rgba(255,255,255,0.15);
     color: rgba(255,255,255,0.8);
     font-size: 0.84rem; font-weight: 500;
-    font-family: 'Inter', sans-serif; cursor: pointer;
+    font-family: 'Raleway', sans-serif; cursor: pointer;
     transition: all 0.2s ease;
     backdrop-filter: blur(8px);
   }
@@ -182,7 +182,7 @@ const css = `
   /* card */
   .ccp-card {
     position: relative; overflow: hidden;
-    border-radius: 18px;
+    border-radius: 18px; height: 100%; display: flex; flex-direction: column;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.04);
     backdrop-filter: blur(16px);
@@ -216,7 +216,7 @@ const css = `
     background: linear-gradient(90deg, rgba(99,102,241,0.8), rgba(139,92,246,0.6), transparent);
   }
 
-  .ccp-card-body { padding: 22px 24px; position: relative; z-index: 1; }
+  .ccp-card-body { padding: 22px 24px; position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
 
   /* card header row */
   .ccp-card-head {
@@ -258,7 +258,7 @@ const css = `
   /* description */
   .ccp-desc {
     font-size: 0.845rem; color: rgba(255,255,255,0.65);
-    line-height: 1.7; margin-bottom: 14px;
+    line-height: 1.7; margin-bottom: 14px; flex: 1;
   }
 
   /* difficulty chip */
@@ -333,7 +333,7 @@ const css = `
     background: rgba(99,102,241,0.25);
     border: 1px solid rgba(99,102,241,0.4);
     color: #c7d2fe; font-size: 0.85rem; font-weight: 500;
-    font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+    font-family: 'Raleway', sans-serif; cursor: pointer; transition: all 0.2s;
   }
   .ccp-empty-btn:hover { background: rgba(99,102,241,0.38); }
 `;

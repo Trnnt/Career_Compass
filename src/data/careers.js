@@ -4,7 +4,8 @@
  */
 
 export const STREAMS = [
-  { value: 'science', label: 'Science (PCM/PCB)' },
+  { value: 'PCM', label: 'Science (PCM)' },
+  { value: 'PCB', label: 'Science (PCB)' },
   { value: 'commerce', label: 'Commerce' },
   { value: 'arts', label: 'Arts / Humanities' },
 ];
@@ -12,7 +13,8 @@ export const STREAMS = [
 export const STREAMS_BY_GRADE = {
   '10': [
     { value: 'undecided', label: 'Not decided yet', normalized: 'undecided' },
-    { value: 'science', label: 'Science (PCM/PCB)', normalized: 'science' },
+    { value: 'PCM', label: 'Science (PCM)', normalized: 'science' },
+    { value: 'PCB', label: 'Science (PCB)', normalized: 'science' },
     { value: 'commerce', label: 'Commerce', normalized: 'commerce' },
     { value: 'arts', label: 'Arts / Humanities', normalized: 'arts' },
   ],
@@ -33,7 +35,10 @@ export function getStreamsForGrade(grade) {
 export function normalizeStream(value, grade) {
   const v = String(value || '').trim();
   if (!v) return 'undecided';
-  if (v === 'science' || v === 'commerce' || v === 'arts' || v === 'undecided') return v;
+  if (v === 'PCM' || v === 'PCB' || v === 'science' || v === 'commerce' || v === 'arts' || v === 'undecided') {
+    if (v === 'PCM' || v === 'PCB') return 'science'; // MAP to logic stream 'science' for matching
+    return v;
+  }
   const options = getStreamsForGrade(grade);
   const found = options.find((o) => o.value === v);
   return found?.normalized || 'undecided';
@@ -498,7 +503,9 @@ export function getRecommendations(profile, aptitudeScores, traitSignals = {}) {
     const traitAlignment = 0.65 * aptAvg + 0.35 * sigAvg;
 
     const score01 = 0.33 * interestHit + 0.22 * streamHit + 0.45 * traitAlignment;
-    const score = Math.round(score01 * 100);
+    // Add a tiny differentiator based on ID hash to avoid perfect ties in UI
+    const tieBreaker = (career.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 10) / 500;
+    const score = Math.round((score01 + tieBreaker) * 100);
     const matchPercentage = Math.max(20, Math.min(98, score));
 
     return {

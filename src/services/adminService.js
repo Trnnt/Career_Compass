@@ -86,10 +86,21 @@ async function fetchJson(path, init) {
   return response.json();
 }
 
-function buildLocalSnapshot() {
-  const users = loadUsersLocal();
-  const states = users.map((u) => ({ user: u, state: loadStateForUser(u.id) }));
-  const allAttempts = states.flatMap((x) => x.state?.attempts || []);
+function buildDashboardSnapshot(apiUsers = [], apiAttempts = [], explicitSource = null) {
+  const users = apiUsers.length > 0 ? apiUsers : loadUsersLocal();
+  const states = users.map((u) => {
+    const isApi = !!u.password; // Quick check if it's from backend
+    return {
+      user: u,
+      state: isApi ? {
+        profile: true,
+        attempts: apiAttempts.filter(a => a.user && a.user.id === u.id),
+        recommendations: [] // Add real recommendations if we build the endpoint later
+      } : loadStateForUser(u.id)
+    };
+  });
+
+  const allAttempts = apiAttempts.length > 0 ? apiAttempts : states.flatMap((x) => x.state?.attempts || []);
   const totalUsers = users.length;
   const totalAttempts = allAttempts.length;
   const avgScore = totalAttempts
@@ -103,7 +114,7 @@ function buildLocalSnapshot() {
 
   const recentAttempts = allAttempts
     .slice()
-    .sort((a, b) => new Date(b?.completedAt || 0).getTime() - new Date(a?.completedAt || 0).getTime())
+    .sort((a, b) => new Date(b?.createdAt || b?.completedAt || 0).getTime() - new Date(a?.createdAt || a?.completedAt || 0).getTime())
     .slice(0, 15);
 
   const questionCatalog = [...TEST_BANK, ...loadStagedQuestionsLocal()];
@@ -115,7 +126,7 @@ function buildLocalSnapshot() {
   const testedUsers = states.filter((s) => Array.isArray(s.state?.attempts) && s.state.attempts.length > 0).length;
 
   return {
-    source: 'local',
+    source: explicitSource || (apiUsers.length > 0 ? 'api' : 'local'),
     summary: {
       totalUsers,
       activeProfiles,
@@ -155,12 +166,49 @@ function buildLocalSnapshot() {
 }
 
 export async function fetchAdminSnapshot() {
-  if (!API_BASE) return buildLocalSnapshot();
+  if (!API_BASE) return buildDashboardSnapshot();
   try {
-    const data = await fetchJson('/api/admin/dashboard');
-    return { ...data, source: 'api' };
-  } catch {
-    return buildLocalSnapshot();
+    const token = localStorage.getItem('careercompass:jwt');
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    const [usersRes, attemptsRes] = await Promise.all([
+      fetch(`${API_BASE}/api/admin/users`, { headers }),
+      fetch(`${API_BASE}/api/admin/attempts`, { headers })
+    ]);
+
+    // If not admin, fallback to local so the page handles the error or renders mock data
+    if (!usersRes.ok || !attemptsRes.ok) return buildDashboardSnapshot();
+
+    const users = await usersRes.json();
+    const attempts = await attemptsRes.json();
+
+    return buildDashboardSnapshot(users, attempts, 'api');
+  } catch (err) {
+    console.error("Failed to fetch admin backend data:", err);
+    return buildDashboardSnapshot();
+  }
+}
+
+export async function fetchTeacherSnapshot() {
+  if (!API_BASE) return buildDashboardSnapshot();
+  try {
+    const token = localStorage.getItem('careercompass:jwt');
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    const [usersRes, attemptsRes] = await Promise.all([
+      fetch(`${API_BASE}/api/teacher/students`, { headers }),
+      fetch(`${API_BASE}/api/teacher/attempts`, { headers })
+    ]);
+
+    if (!usersRes.ok || !attemptsRes.ok) return buildDashboardSnapshot();
+
+    const users = await usersRes.json();
+    const attempts = await attemptsRes.json();
+
+    return buildDashboardSnapshot(users, attempts, 'api');
+  } catch (err) {
+    console.error("Failed to fetch teacher backend data:", err);
+    return buildDashboardSnapshot();
   }
 }
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { getOwnerEmail } from '../auth/ownerAuth';
 import { TEACHER_EMAILS } from '../data/teachers';
 import { Sun as IconSun, Moon as IconMoon, BookOpen, Monitor, Cpu, Code } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -35,7 +34,7 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from || '/';
 
-  const [role, setRole] = useState('student'); // 'student', 'teacher', or 'admin'
+  const [role, setRole] = useState(location.state?.role || 'student'); // 'student', 'teacher', or 'admin'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secretKey, setSecretKey] = useState('');
@@ -90,6 +89,20 @@ export default function Login() {
   const roleAccent = roleCfg.accent;
   const roleGlow = roleCfg.glow;
 
+  // Auto-fill demo credentials
+  useEffect(() => {
+    if (role === 'admin' && !useSecretKey) {
+      setEmail('admin@example.com');
+      setPassword('admin123');
+    } else if (role === 'teacher') {
+      setEmail('teacher@school.com');
+      setPassword('teacher123');
+    } else if (role === 'student') {
+      setEmail('');
+      setPassword('');
+    }
+  }, [role, useSecretKey]);
+
   // Inject dynamic styles
   useEffect(() => {
     const styleTag = document.createElement('style');
@@ -123,12 +136,11 @@ export default function Login() {
         navigate('/teacher', { replace: true });
       } else if (role === 'admin') {
         if (useSecretKey) {
-          await loginOwner({ secretKey, useSecretKey: true });
-          navigate('/admin', { replace: true });
+          await loginAdmin({ secretKey, useSecretKey: true });
         } else {
           await loginAdmin({ email, password });
-          navigate('/admin', { replace: true });
         }
+        navigate('/admin', { replace: true });
       } else {
         await login({ email, password });
         navigate(from, { replace: true });
@@ -151,7 +163,7 @@ export default function Login() {
           return (
             <button
               key={r.id}
-              onClick={() => { setRole(r.id); setError(''); setUseSecretKey(false); }}
+              onClick={() => { setRole(r.id); setError(''); }}
               className={`flex-1 py-3 text-[15px] font-bold rounded-xl transition-all duration-300 ${isActive ? 'text-white shadow-lg' : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}
               style={{
                 background: isActive ? r.accent : 'transparent',
@@ -165,20 +177,20 @@ export default function Login() {
 
       <form onSubmit={onSubmit} className="space-y-5">
         {role === 'admin' && (
-          <div className="flex justify-end gap-2 mb-1">
+          <div className="flex p-1 bg-white/5 rounded-xl border border-white/5 mb-4">
             <button
               type="button"
-              onClick={() => { setUseSecretKey(false); setError(''); }}
-              className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${!useSecretKey ? 'text-white' : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}
-              style={{ background: !useSecretKey ? (isDark ? '#2a2c38' : '#cbd5e1') : 'transparent' }}
+              onClick={() => setUseSecretKey(false)}
+              className="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style={{ background: !useSecretKey ? (isDark ? '#2a2c38' : '#cbd5e1') : 'transparent', color: !useSecretKey ? t.text : '#94a3b8' }}
             >
-              Email
+              Email & Password
             </button>
             <button
               type="button"
-              onClick={() => { setUseSecretKey(true); setError(''); }}
-              className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${useSecretKey ? 'text-white' : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}
-              style={{ background: useSecretKey ? (isDark ? '#2a2c38' : '#cbd5e1') : 'transparent' }}
+              onClick={() => setUseSecretKey(true)}
+              className="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style={{ background: useSecretKey ? (isDark ? '#2a2c38' : '#cbd5e1') : 'transparent', color: useSecretKey ? t.text : '#94a3b8' }}
             >
               Secret Key
             </button>
@@ -214,7 +226,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 required
-                placeholder={role === 'teacher' ? "teacher@school.com" : role === 'admin' ? getOwnerEmail() : "student@example.com"}
+                placeholder={role === 'teacher' ? "teacher@school.com" : role === 'admin' ? "admin@example.com" : "student@example.com"}
                 className="w-full px-4 py-4 rounded-2xl outline-none transition-all duration-200 font-medium text-[15px]"
                 style={{
                   background: isDark ? '#292b36' : '#ffffff',
@@ -247,12 +259,11 @@ export default function Login() {
             </div>
           </>
         )}
-
-        {error ? (
+        {error && (
           <div className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-500 font-medium">
             {error}
           </div>
-        ) : null}
+        )}
 
         <button
           type="submit"
@@ -264,7 +275,6 @@ export default function Login() {
         </button>
       </form>
 
-      {/* Create account — Student only */}
       {role === 'student' && (
         <div className="mt-6 text-center">
           <div className="flex items-center gap-3 mb-5">
